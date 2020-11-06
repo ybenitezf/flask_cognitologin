@@ -27,6 +27,7 @@ setup(
     py_modules=['flask_cognitologin'],
     zip_safe=False,
     include_package_data=True,
+    python_requires=">= 3.6",
     platforms='any',
     install_requires=[
         'Flask', 'python-jose', 'requests'
