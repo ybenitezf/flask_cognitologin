@@ -7,7 +7,7 @@ Flask-CognitoLogin
         :target: https://pypi.python.org/pypi/flask_cognitologin
 
 .. image:: https://img.shields.io/travis/ybenitezf/flask_cognitologin.svg
-        :target: https://travis-ci.com/ybenitezf/flask_cognitologin
+        :target: https://travis-ci.org/ybenitezf/flask_cognitologin
 
 .. image:: https://readthedocs.org/projects/flask-cognitologin/badge/?version=latest
         :target: https://flask-cognitologin.readthedocs.io/en/latest/?badge=latest
