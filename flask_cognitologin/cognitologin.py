@@ -1,10 +1,4 @@
-"""My Cognito extension
-
-Requirements:
-  - flask
-  - requests
-  - python_jose
-"""
+"""Main module."""
 from flask import current_app, _app_ctx_stack, session, request
 from requests.auth import HTTPBasicAuth
 from jose import jwt
