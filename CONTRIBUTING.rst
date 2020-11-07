@@ -60,38 +60,45 @@ Get Started!
 Ready to contribute? Here's how to set up `flask_cognitologin` for local development.
 
 1. Fork the `flask_cognitologin` repo on GitHub.
-2. Clone your fork locally::
+2. Create a folder for the project::
 
-    $ git clone git@github.com:your_name_here/flask_cognitologin.git
-
-3. Install your local copy into a virtualenv. Assuming you have virtualenvwrapper installed, this is how you set up your fork for local development::
-
-    $ mkvirtualenv flask_cognitologin
+    $ mkdir flask_cognitologin
     $ cd flask_cognitologin/
-    $ python setup.py develop
+3. Config virtualenv::
 
-4. Create a branch for local development::
+    $ python3 -m venv env
+    $ source env/bin/activate
+4. Clone your fork locally as src::
 
-    $ git checkout -b name-of-your-bugfix-or-feature
+    $ git clone https://github.com/your_username_here/flask_cognitologin.git src
+
+5. Install requirements::
+
+    $ cd src/
+    $ pip install -r requirements_dev.txt
+
+6. Create a branch for local development::
+
+    $ git checkout -b 'name-of-your-bugfix-or-feature'
 
    Now you can make your changes locally.
 
-5. When you're done making changes, check that your changes pass flake8 and the
+7. When you're done making changes, check that your changes pass flake8 and the
    tests, including testing other Python versions with tox::
 
     $ flake8 flask_cognitologin tests
-    $ python setup.py test or pytest
+    $ python setup.py pytest
     $ tox
 
    To get flake8 and tox, just pip install them into your virtualenv.
 
-6. Commit your changes and push your branch to GitHub::
+8. Commit your changes and push your branch to GitHub::
 
     $ git add .
     $ git commit -m "Your detailed description of your changes."
     $ git push origin name-of-your-bugfix-or-feature
 
-7. Submit a pull request through the GitHub website.
+9. Submit a pull request through the GitHub website.
 
 Pull Request Guidelines
 -----------------------
