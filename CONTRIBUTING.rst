@@ -60,45 +60,51 @@ Get Started!
 Ready to contribute? Here's how to set up `flask_cognitologin` for local development.
 
 1. Fork the `flask_cognitologin` repo on GitHub.
-2. Create a folder for the project::
+2. Clone your fork locally::
 
-    $ mkdir flask_cognitologin
-    $ cd flask_cognitologin/
+    $ git clone https://github.com/your_username_here/flask_cognitologin.git
+    $ cd flask_cognitologin
+
 3. Config virtualenv::
 
     $ python3 -m venv env
     $ source env/bin/activate
-4. Clone your fork locally as src::
 
-    $ git clone https://github.com/your_username_here/flask_cognitologin.git src
+4. Install requirements::
 
-5. Install requirements::
-
-    $ cd src/
     $ pip install -r requirements_dev.txt
 
-6. Create a branch for local development::
+5. Create a branch for local development::
 
     $ git checkout -b 'name-of-your-bugfix-or-feature'
 
    Now you can make your changes locally.
 
-7. When you're done making changes, check that your changes pass flake8 and the
+6. When you're done making changes, check that your changes pass flake8 and the
    tests, including testing other Python versions with tox::
 
     $ flake8 flask_cognitologin tests
     $ python setup.py pytest
     $ tox
 
+   or::
+
+    $ make test
+    $ make lint
+
    To get flake8 and tox, just pip install them into your virtualenv.
 
-8. Commit your changes and push your branch to GitHub::
+8. Remember to cleanup the worktree:
+
+    $ make clean
+
+9. Commit your changes and push your branch to GitHub::
 
     $ git add .
     $ git commit -m "Your detailed description of your changes."
     $ git push origin name-of-your-bugfix-or-feature
 
-9. Submit a pull request through the GitHub website.
+10. Submit a pull request through the GitHub website.
 
 Pull Request Guidelines
 -----------------------
@@ -109,7 +115,7 @@ Before you submit a pull request, check that it meets these guidelines:
 2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.rst.
-3. The pull request should work for Python 3.5, 3.6, 3.7 and 3.8, and for PyPy. Check
+3. The pull request should work for Python 3.6, 3.7 and 3.8, and for PyPy. Check
    https://travis-ci.com/ybenitezf/flask_cognitologin/pull_requests
    and make sure that the tests pass for all supported Python versions.
 
