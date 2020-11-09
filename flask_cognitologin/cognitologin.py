@@ -1,5 +1,5 @@
 """Main module."""
-from flask import current_app, _app_ctx_stack, session, request
+from flask import session, request
 from requests.auth import HTTPBasicAuth
 from jose import jwt
 from datetime import datetime
@@ -8,7 +8,7 @@ import os
 
 
 class CognitoLogin(object):
-    
+
     def __init__(self, app=None):
         self.app = app
         if app is not None:
@@ -67,7 +67,7 @@ class CognitoLogin(object):
 
     def getUserInfo(self):
         """Call this on COGNITO_CALLBACK_URL to get the user info
-        
+
         returns a dict with the keys of the claims of the id_token and
         access_token:
 
@@ -88,7 +88,7 @@ class CognitoLogin(object):
             'grant_type': 'authorization_code',
             'client_id': self.COGNITO_CLIENT_ID,
             'code': code,
-            "redirect_uri" : self.COGNITO_CALLBACK_URL
+            "redirect_uri": self.COGNITO_CALLBACK_URL
         }
         r = requests.post(
             "https://%s/oauth2/token" % self.COGNITO_DOMAIN,
@@ -99,7 +99,7 @@ class CognitoLogin(object):
         if r.ok and (csrf_state == session['mycogext_csrf_state']):
             self._verify(r.json()['access_token'])
             id_token = self._verify(
-                r.json()['id_token'], 
+                r.json()['id_token'],
                 access_token=r.json()['access_token'])
             ret = dict()
             ret.update(id_token)
@@ -110,7 +110,7 @@ class CognitoLogin(object):
 
     def loadUserInfo(self, identity):
         """Load the user from the session if any
-        
+
         If there is no user return None
 
         If the access has expired it will try to get new tokens and updates
@@ -123,7 +123,7 @@ class CognitoLogin(object):
             "cognito:groups": ["SomeGroup", ...],
             "email_verified": True,
             "cognito:username": "lolo",
-            "name": "Lolo Perez", 
+            "name": "Lolo Perez",
             "exp": 1604608415,
             "email": "ybenitezf@gmail.com"
             ...
@@ -153,7 +153,7 @@ class CognitoLogin(object):
             if r.ok:
                 self._verify(r.json()['access_token'])
                 id_token = self._verify(
-                    r.json()['id_token'], 
+                    r.json()['id_token'],
                     access_token=r.json()['access_token'])
                 ret = dict()
                 ret.update(id_token)
@@ -176,7 +176,6 @@ class CognitoLogin(object):
             token, key, audience=self.COGNITO_CLIENT_ID, 
             access_token=access_token)
         return id_token
-
 
     def teardown(self, exception):
         pass
