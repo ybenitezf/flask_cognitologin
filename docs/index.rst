@@ -1,5 +1,5 @@
 Welcome to Flask-CognitoLogin's documentation!
-======================================
+==============================================
 
 .. toctree::
    :maxdepth: 2

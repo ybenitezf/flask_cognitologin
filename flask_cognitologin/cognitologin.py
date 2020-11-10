@@ -16,7 +16,30 @@ class CognitoLogin(object):
             self.init_app(app)
 
     def init_app(self, app):
-        # vefiry config's and defaults
+        """Initialize the extension
+
+        This extension need session so the ``SECRET_KEY`` should be
+        configured::
+
+            app.config['SECRET_KEY'] = 'some-secret-of-my-own'
+
+        You also need:
+
+        *  ``AWS_REGION``: aws region of your cognito user pool
+        *  ``COGNITO_POOL_ID``:  Cognito user pool ID
+        *  ``COGNITO_DOMAIN``: this is the full hostname of the cognito domain
+           for example, ``mycogdomain.auth.eu-west-1.amazoncognito.com``,
+           refer to `aws documentation`_
+        *  ``COGNITO_CLIENT_ID``: Your cognito client ID
+        *  ``COGNITO_CALLBACK_URL``: URL for the `autorization code grant`_,
+           cognito will call to this URL with the user tokens
+        *  ``COGNITO_CLIENT_SECRET``: Your cognito client secret
+
+        :raises ValueError: if the config keys are missing
+
+        .. _aws documentation: https://shorturl.at/tuwBF
+        .. _autorization code grant: https://shorturl.at/pFIKR
+        """
         config = app.config
         mykeys = [
             'AWS_REGION', 'COGNITO_POOL_ID', 'COGNITO_DOMAIN',
@@ -33,7 +56,7 @@ class CognitoLogin(object):
         return session['mycogext_csrf_state']
 
     def getSignInUrl(self):
-        """Return the cognito URL for signin"""
+        """Return the cognito url for login"""
         csrf_state = self._getCsrfState()
         config = current_app.config
         return (
@@ -60,21 +83,10 @@ class CognitoLogin(object):
         )
 
     def getIdentity(self):
-        """Call this on COGNITO_CALLBACK_URL to get the user info
+        """Process cognito autorization code grant
 
-        returns a dict with the keys of the claims of the id_token and
-        access_token:
-
-        {
-            "sub": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-            "cognito:groups": ["SomeGroup", ...],
-            "email_verified": True,
-            "cognito:username": "lolo",
-            "name": "Lolo Perez",
-            "exp": 1604608415,
-            "email": "ybenitezf@gmail.com"
-            ...
-        }
+        :return: the user identity or None
+        :rtype: dict
         """
         csrf_state = request.args.get('state')
         code = request.args.get('code')
@@ -106,6 +118,12 @@ class CognitoLogin(object):
         return None
 
     def getTokens(self, refresh_token):
+        """Returns the ``id_token`` and ``access_token``
+
+        :param str refresh_token: refresh token for the user
+        :returns: a ``dict`` with the keys ``id_token`` and ``access_token``
+        :rtype: dict
+        """
         config = current_app.config
 
         payload = {
@@ -130,25 +148,16 @@ class CognitoLogin(object):
             return None
 
     def checkIdentity(self, identity):
-        """Load the user from the session if any
+        """Check identity claims
 
-        If there is no user return None
+        If the current identity is about to expire a new one will be emitted.
 
-        If the access has expired it will try to get new tokens and updates
-        the user identity
+        If ``identity`` does not has ``exp`` and ``refresh_token`` keys this
+        returns ``None``
 
-        Return's user identity claims
-
-        {
-            "sub": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-            "cognito:groups": ["SomeGroup", ...],
-            "email_verified": True,
-            "cognito:username": "lolo",
-            "name": "Lolo Perez",
-            "exp": 1604608415,
-            "email": "ybenitezf@gmail.com"
-            ...
-        }
+        :param dict identity: current user identity claims
+        :returns: identity
+        :rtype: dict
         """
         if 'exp' not in identity:
             return None
