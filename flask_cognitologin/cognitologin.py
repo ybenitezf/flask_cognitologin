@@ -1,5 +1,5 @@
 """Main module."""
-from flask import session, request
+from flask import session, request, current_app, _app_ctx_stack
 from requests.auth import HTTPBasicAuth
 from jose import jwt
 from datetime import datetime
@@ -11,29 +11,21 @@ class CognitoLogin(object):
 
     def __init__(self, app=None):
         self.app = app
+
         if app is not None:
             self.init_app(app)
 
     def init_app(self, app):
         # vefiry config's and defaults
-        self.AWS_REGION = app.config['AWS_REGION']
-        self.COGNITO_POOL_ID = app.config['COGNITO_POOL_ID']
-        self.COGNITO_DOMAIN = app.config['COGNITO_DOMAIN']
-        self.COGNITO_CLIENT_ID = app.config['COGNITO_CLIENT_ID']
-        self.COGNITO_CALLBACK_URL = app.config['COGNITO_CALLBACK_URL']
-        self.COGNITO_CLIENT_SECRET = app.config['COGNITO_CLIENT_SECRET']
-        self._loadKeys()
+        config = app.config
+        mykeys = [
+            'AWS_REGION', 'COGNITO_POOL_ID', 'COGNITO_DOMAIN',
+            'COGNITO_CLIENT_ID', 'COGNITO_CALLBACK_URL',
+            'COGNITO_CLIENT_SECRET']
+        tests = any([config.get(k) is None for k in mykeys])
+        if tests:
+            raise ValueError("Missing config keys for flask_cognito")
         app.teardown_appcontext(self.teardown)
-        self.app = app
-
-    def _loadKeys(self):
-        """load and cache cognito JSON Web Key (JWK)"""
-        url = (
-            "https://cognito-idp.{}.amazonaws.com/{}/"
-            ".well-known/jwks.json").format(
-                self.AWS_REGION, self.COGNITO_POOL_ID
-            )
-        self.JWKS = requests.get(url).json()["keys"]
 
     def _getCsrfState(self):
         session['mycogext_csrf_state'] = os.urandom(16).hex()
@@ -43,29 +35,31 @@ class CognitoLogin(object):
     def getSignInUrl(self):
         """Return the cognito URL for signin"""
         csrf_state = self._getCsrfState()
+        config = current_app.config
         return (
             "https://{domain}/login?response_type=code&"
             "client_id={clientid}&state={csrf_state}&"
             "redirect_uri={callbackurl}".format(
-                domain=self.COGNITO_DOMAIN,
-                clientid=self.COGNITO_CLIENT_ID,
+                domain=config.get('COGNITO_DOMAIN'),
+                clientid=config.get('COGNITO_CLIENT_ID'),
                 csrf_state=csrf_state,
-                callbackurl=self.COGNITO_CALLBACK_URL
+                callbackurl=config.get('COGNITO_CALLBACK_URL')
             )
         )
 
     def getLogOutUrl(self):
         """Return the cognito logout url"""
+        config = current_app.config
         return (
             "https://{domain}/logout?response_type=code&client_id="
             "{clientid}&redirect_uri={callbackurl}".format(
-                domain=self.COGNITO_DOMAIN,
-                clientid=self.COGNITO_CLIENT_ID,
-                callbackurl=self.COGNITO_CALLBACK_URL
+                domain=config.get('COGNITO_DOMAIN'),
+                clientid=config.get('COGNITO_CLIENT_ID'),
+                callbackurl=config.get('COGNITO_CALLBACK_URL')
             )
         )
 
-    def getUserInfo(self):
+    def getIdentity(self):
         """Call this on COGNITO_CALLBACK_URL to get the user info
 
         returns a dict with the keys of the claims of the id_token and
@@ -76,7 +70,7 @@ class CognitoLogin(object):
             "cognito:groups": ["SomeGroup", ...],
             "email_verified": True,
             "cognito:username": "lolo",
-            "name": "Lolo Perez", 
+            "name": "Lolo Perez",
             "exp": 1604608415,
             "email": "ybenitezf@gmail.com"
             ...
@@ -84,17 +78,20 @@ class CognitoLogin(object):
         """
         csrf_state = request.args.get('state')
         code = request.args.get('code')
+        config = current_app.config
         payload = {
             'grant_type': 'authorization_code',
-            'client_id': self.COGNITO_CLIENT_ID,
+            'client_id': config.get('COGNITO_CLIENT_ID'),
             'code': code,
-            "redirect_uri": self.COGNITO_CALLBACK_URL
+            "redirect_uri": config.get('COGNITO_CALLBACK_URL')
         }
         r = requests.post(
-            "https://%s/oauth2/token" % self.COGNITO_DOMAIN,
+            "https://%s/oauth2/token" % config.get('COGNITO_DOMAIN'),
             data=payload,
             auth=HTTPBasicAuth(
-                self.COGNITO_CLIENT_ID, self.COGNITO_CLIENT_SECRET)
+                config.get('COGNITO_CLIENT_ID'),
+                config.get('COGNITO_CLIENT_SECRET')
+            )
         )
         if r.ok and (csrf_state == session['mycogext_csrf_state']):
             self._verify(r.json()['access_token'])
@@ -108,7 +105,31 @@ class CognitoLogin(object):
 
         return None
 
-    def loadUserInfo(self, identity):
+    def getTokens(self, refresh_token):
+        config = current_app.config
+
+        payload = {
+            'grant_type': 'refresh_token',
+            'client_id': config.get('COGNITO_CLIENT_ID'),
+            'refresh_token': refresh_token
+        }
+        r = requests.post(
+            "https://%s/oauth2/token" % config.get('COGNITO_DOMAIN'),
+            data=payload,
+            auth=HTTPBasicAuth(
+                config.get('COGNITO_CLIENT_ID'),
+                config.get('COGNITO_CLIENT_SECRET'))
+        )
+
+        if r.ok:
+            return {
+                'access_token': r.json()['access_token'],
+                'id_token': r.json()['id_token']
+            }
+        else:
+            return None
+
+    def checkIdentity(self, identity):
         """Load the user from the session if any
 
         If there is no user return None
@@ -138,23 +159,13 @@ class CognitoLogin(object):
 
         if expires_seconds < 0:
             refresh_token = identity['refresh_token']
-            payload = {
-                'grant_type': 'refresh_token',
-                'client_id': self.COGNITO_CLIENT_ID,
-                'refresh_token': refresh_token
-            }
-            r = requests.post(
-                "https://%s/oauth2/token" % self.COGNITO_DOMAIN,
-                data=payload,
-                auth=HTTPBasicAuth(
-                    self.COGNITO_CLIENT_ID, self.COGNITO_CLIENT_SECRET)
-            )
+            r = self.getTokens(refresh_token)
 
-            if r.ok:
-                self._verify(r.json()['access_token'])
+            if r:
+                self._verify(r['access_token'])
                 id_token = self._verify(
-                    r.json()['id_token'],
-                    access_token=r.json()['access_token'])
+                    r['id_token'],
+                    access_token=r['access_token'])
                 ret = dict()
                 ret.update(id_token)
                 ret['refresh_token'] = refresh_token
@@ -171,12 +182,28 @@ class CognitoLogin(object):
         and verify the key
         """
         header = jwt.get_unverified_header(token)
+        config = current_app.config
         key = [k for k in self.JWKS if k["kid"] == header['kid']][0]
         id_token = jwt.decode(
-            token, key, audience=self.COGNITO_CLIENT_ID, 
+            token, key, audience=config.get('COGNITO_CLIENT_ID'),
             access_token=access_token)
         return id_token
 
     def teardown(self, exception):
         pass
         # nothing todo here right now
+
+    @property
+    def JWKS(self):
+        config = current_app.config
+        ctx = _app_ctx_stack.top
+        if ctx is not None:
+            if not hasattr(ctx, 'aws_jwkeys'):
+                url = (
+                    "https://cognito-idp.{}.amazonaws.com/{}/"
+                    ".well-known/jwks.json").format(
+                        config.get('AWS_REGION'),
+                        config.get('COGNITO_POOL_ID')
+                )
+                ctx.aws_jwkeys = requests.get(url).json()["keys"]
+            return ctx.aws_jwkeys
